@@ -1,0 +1,14 @@
+IACT number 0 (0 - IACT01, 1 - IACT02...)
+../Calibrations_and_Coordinates/IACT01/factors_051019.07Ch_88EP.txt (factors file name)
+../Calibrations_and_Coordinates/IACT01/xy_turn_2019s_EP.txt (XY coordinate file)
+peds				2			(0 - peds, 1 - peds.m3s, 2 - peds.mediana)
+cleaning			0			(0 - fix, 1 - sigma)
+cleaning thresholds	14	7		(for sigma usually 6	3, for fix usually 14	7)
+excluded pixels
+clean_only 0 || 1 - process data ignoring wrong pointing, 0 - pointing file must correspond to run
+make clean and background files 1 || 1 - create folders with clean and background amplitudes every pixel (max 10000 values per pixel for background), 0 - processing without saving clean and background
+/k3/taiga3/DATA_IACT01/2021-22.bin/jan22/ #path to data folder (that contain DDMMYY.RR folders)
+/k1/taiga_pool/hillas_utility/outs_clean/IACT01/ #out path (here folder DDMMYY.RR with out files will be created)
+/k3/taiga3/DATA_IACT01/2021-22.txt.v3/wobble/iact01_wobble_sep2021-feb2022_v6.0/jan22/ #path to wobble folder (name of appropriate wobble file should be of the form: pointing_data_YYYY-MM-DD_hh:mm:ss.csv)
+date	run
+020122  00
