@@ -134,9 +134,9 @@ int main(int argc, char **argv)
 	getline(pParam, line);
 	istringstream ist9(line);
 	ist9 >> param_wobble_path;                        // path to wobble folder
-	getline(pParam, line);
-	vector <string> FolderList;
-	vector <string> RunNumbList;
+	getline(pParam, line);                            // skips "date run" line 
+	vector <string> FolderList;                       // date list
+	vector <string> RunNumbList;                      // run list
 
 	string run_numb;
 	while(!pParam.eof()) {
@@ -152,14 +152,14 @@ int main(int argc, char **argv)
 	pParam.close();
 	
 ///////////////////////////////////////////////////// read factors
-	ifstream file0(factor_file);
+	ifstream file0(factor_file);  //  opens file with k-adc and 1pe
 	if (!file0.is_open()) {
 		cout << "calibration file is not found" << endl;
 		return 0;
 	}
-	int q = 0;
+	int q = 0;   // channel counter 
 	if(IACT_numb == 0) {
-		for(int i = 0; i < 10; i++) {
+		for(int i = 0; i < 10; i++) {  // reads header
 			getline(file0, line);
 			if(file0.eof()) {
 				cout << "calibration file is empty" << endl;
@@ -170,15 +170,15 @@ int main(int argc, char **argv)
 			getline(file0, line);
 			if(!file0.eof()) {
 				istringstream ist(line);
-				ist >> bsm >> cch >> gain >> gain >> ecode >> rel_sens;
+				ist >> bsm >> cch >> gain >> gain >> ecode >> rel_sens;   //  overwrites gain?? => skips gain column in file
 				//cout << "\t" << bsm << "\t" << cch << "\t" << ecode << "\t" << rel_sens << endl;
-				if(ecode > 0) {
-					e[bsm][cch] = ecode;
-					sens[bsm][cch] = rel_sens;
+				if(ecode > 0) {                  // single photoelectron amplitude in ADC codes
+					e[bsm][cch] = ecode;         // bsm - cluster, cch - channel
+					sens[bsm][cch] = rel_sens;   
 					q++;
 				}
 				else{
-					e[bsm][cch] = 1e9;
+					e[bsm][cch] = 1e9;           
 					sens[bsm][cch] = -1e9;
 				}
 			}
