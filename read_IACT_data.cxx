@@ -22,7 +22,7 @@ char fou[190],save_background_str[190], month_year[70], fou_hillas[190],folder_o
 string folder;
 	int bsm, cch, ch,ff,f,num,por,trig,n,kkk[6][64][25],pos[6][64][25], Nsos_array[64][25], cluster[25], nn, anti_f[25], jj, jjj,j, x, gg;
 int co, number_of_pixels_cam, pix_number[64][25];
-double pedp, sigp, b[64][25],bmp[64][25],ped[64][25],sig[64][25], e[25][64], sens[25][64], gain, k_adc, ecode, rel_sens, time_0 = 1, event_unix_time = 0;
+double pedp, sigp, b[64][25],bmp[64][25],ped[64][25],sig[64][25], e[25][64] /*single photoelectron amplitude in ADC codes*/, sens[25][64] /*relative sensitivity of pixel*/, gain, k_adc, ecode, rel_sens, time_0 = 1, event_unix_time = 0;
 string str,srr[25], timet, ped_folder[4] = {"peds", "peds.m3s", "peds.mediana","peds_median_my"}, data_path, out_data_path, hillas_table_name, clean_out_name, param_wobble_path, cleaning_type;
 double hour, minute, sec, mksec, mlsec, nsec, time0, x_pos[64][25], y_pos[64][25], tim_start = 0, tim_end = 0, event_delay;
 map <int, string> calendar = {{1, "jan"}, {2, "feb"},{3, "mar"},{4, "apr"},{5, "may"},{6, "jun"},{7, "jul"},{8, "aug"},{9, "sep"},{10, "oct"},{11, "nov"},{12, "dec"}};
@@ -65,11 +65,23 @@ double time_start_end(string run_date, string path){
 int fileList(string data_path, string data_folder,string run_numb)
 {
 	sprintf(BashCommandFolder, "%s%s%s%s%s%s", "readlink -e ", data_path.c_str(), data_folder.c_str(), ".", run_numb.c_str(),"/outs/*out_* > List_outs");
+	// parses all *out_* files_abs_paths into List_outs file
 	system(BashCommandFolder);//taiga_2020/data2020/DATA_IACT02/2020-21.txt.v3/  /k2/DATA_IACT02/2019-20.txt.v3/
 	sprintf(BashCommandFolder, "%s%s%s%s%s%s%s%s", "readlink -e ", data_path.c_str(), data_folder.c_str(), ".", run_numb.c_str(),"/", ped_folder[ped_param].c_str(), "/*ped_* > List_peds");
+	// parses all *ped_* files_abs_path from mediana folder into List_peds,readlink -e .../data_folder/030122.01/peds.mediana/*ped_* > List_peds
 	system(BashCommandFolder);
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
 
 int main(int argc, char **argv)
 {
@@ -146,8 +158,8 @@ int main(int argc, char **argv)
 		istringstream ist(line);
 		ist >> folder >> run_numb;                    //  date run
 		if(folder.length() == 0) break;
-		FolderList.push_back(folder);
-		RunNumbList.push_back(run_numb);
+		FolderList.push_back(folder);                 // list of dates
+		RunNumbList.push_back(run_numb);			  // list of runs
 	}
 	pParam.close();
 	
@@ -206,16 +218,16 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	cout << "file calibration size (28*2*22): " << q << endl;
+	cout << "file calibration size (28*2*22): " << q << endl;    // how many ecodes was > 0
 	file0.close();
 
 	////////////////////////////////// read neighbours table
-	ifstream file1(make_neighbours(IACT_numb, coord_file, exclud_clust, exclud_numb));
+	ifstream file1(make_neighbours(IACT_numb, coord_file, exclud_clust, exclud_numb));  // makes and opens file with neighbours for every pixel
 	if (!file1.is_open()) {
 		cout << "file neighbours is not found" << endl;
 		return 0;
 	}
-	q = 0;
+	q = 0;  // counter of ... pixels
 	for(int coun = 0; coun < 25; coun++) {
 					for(int count = 0; count < 64; count++) {
 						pix_number[count][coun]=-1;
@@ -225,8 +237,9 @@ int main(int argc, char **argv)
 						    }
 					}
 				}
-	while(!file1.eof()) {
-		int k[6]= {0},sos[6]= {0},kk=0,Nsos=0, ii=0, kx = 0,ix = 0;
+	while(!file1.eof()) {      
+		// k[6], sos[6] - not used... removed
+		int kk=0,Nsos=0, ii=0, kx = 0,ix = 0;   
 		double x=0,y=0;
 		getline(file1, line);
 		if(file1.eof())
@@ -234,27 +247,39 @@ int main(int argc, char **argv)
 			break;
 		}
 		istringstream ist(line);
-		ist >> kk >> ii;
-		pix_number[ii][kk] = q;
+		ist >> kk >> ii;         // kk - cluster_number, ii - channel_number
+		pix_number[ii][kk] = q;  // ii here is only even numbers, => odd elements remain == -1
 		q++;
-		ist >> x_pos[ii][kk] >> y_pos[ii][kk] >> Nsos;
+		ist >> x_pos[ii][kk] >> y_pos[ii][kk] >> Nsos;  // Nsos - number_of_neighbors
 		Nsos_array[ii][kk] = Nsos;
 		for(int j = 0; j < 6; j++) {
-			kx = 0;
-			ix = 0;
+			kx = 0;  // cluster_of_neighbor
+			ix = 0;  // channel_of_neighbor
 			ist >> kx >> ix;
-			kkk[j][ii][kk] = kx;
-			pos[j][ii][kk] = ix;
+			kkk[j][ii][kk] = kx;  // kkk - matrix of neighbors clusters
+			pos[j][ii][kk] = ix;  // pos - matrix of neighbors channels
 		}
 	}
-	number_of_pixels_cam = q;
+	number_of_pixels_cam = q;   // counted all lines in "neighbours.IACT01", i.e. pixels witj neighbors
 	cout << "number of using camera pixels: "<< number_of_pixels_cam << endl;
 	file1.close();
+	
+
+
+
+
+
+
+
+
+
+
 	////////////////////////////////// read file list
-	for ( int jl=0; jl < FolderList.size(); jl++) {
+	for ( int jl=0; jl < FolderList.size(); jl++) {   // loop through date_run
 		cout << "open run: " << FolderList[jl] << "." << RunNumbList[jl] << endl;
 		ifstream fFileList;
-		fileList(data_path, FolderList[jl], RunNumbList[jl]); //create List_outs and List_peds
+
+		fileList(data_path, FolderList[jl], RunNumbList[jl]); //create List_outs and List_peds (files with parsed abs_path)
 		////////////////////////////////// create Outs vector
 		fFileList.open("List_outs");
 		if (!fFileList.is_open()) {
@@ -295,6 +320,8 @@ int main(int argc, char **argv)
 			}
 		}
 		fFileList.close();
+        
+
 
 		int dir_err = -1, k = 0;
 		while(dir_err == -1){
