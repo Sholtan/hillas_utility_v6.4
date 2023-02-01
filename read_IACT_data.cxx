@@ -22,7 +22,7 @@ char fou[190],save_background_str[190], month_year[70], fou_hillas[190],folder_o
 string folder;
 	int bsm, cch, ch,ff,f,num,por,trig,n,kkk[6][64][25],pos[6][64][25], Nsos_array[64][25], cluster[25], nn, anti_f[25], jj, jjj,j, x, gg;
 int co, number_of_pixels_cam, pix_number[64][25];
-double pedp, sigp, b[64][25],bmp[64][25],ped[64][25],sig[64][25], e[25][64] /*single photoelectron amplitude in ADC codes*/, sens[25][64] /*relative sensitivity of pixel*/, gain, k_adc, ecode, rel_sens, time_0 = 1, event_unix_time = 0;
+double pedp, sigp, b[64][25],bmp[64][25]/* matrix for amps from out_file */,ped[64][25],sig[64][25], e[25][64] /*single photoelectron amplitude in ADC codes*/, sens[25][64] /*relative sensitivity of pixel*/, gain, k_adc, ecode, rel_sens, time_0 = 1, event_unix_time = 0;
 string str,srr[25], timet, ped_folder[4] = {"peds", "peds.m3s", "peds.mediana","peds_median_my"}, data_path, out_data_path, hillas_table_name, clean_out_name, param_wobble_path, cleaning_type;
 double hour, minute, sec, mksec, mlsec, nsec, time0, x_pos[64][25], y_pos[64][25], tim_start = 0, tim_end = 0, event_delay;
 map <int, string> calendar = {{1, "jan"}, {2, "feb"},{3, "mar"},{4, "apr"},{5, "may"},{6, "jun"},{7, "jul"},{8, "aug"},{9, "sep"},{10, "oct"},{11, "nov"},{12, "dec"}};
@@ -279,7 +279,7 @@ int main(int argc, char **argv)
 		cout << "open run: " << FolderList[jl] << "." << RunNumbList[jl] << endl;
 		ifstream fFileList;
 
-		fileList(data_path, FolderList[jl], RunNumbList[jl]); //create List_outs and List_peds (files with parsed abs_path)
+		fileList(data_path, FolderList[jl], RunNumbList[jl]); //create List_outs and List_peds (files with parsed abs_path of amp files)
 		////////////////////////////////// create Outs vector
 		fFileList.open("List_outs");
 		if (!fFileList.is_open()) {
@@ -356,7 +356,7 @@ int main(int argc, char **argv)
 
 
 
-		tim_end = 120 + time_start_end(FolderList[jl], FileListOuts[List_size - 1]); // FileListOuts[List_size - 1] - abs_path of last file
+		tim_end = 120 + time_start_end(FolderList[jl], FileListOuts[List_size - 1]); // FileListOuts[List_size - 1] is abs_path of last file
 
 		// cout << "tim_end: " << tim_end << endl;   // returns unix_time accurate to microseconds for first event in file + 120 seconds
 
@@ -385,11 +385,11 @@ int main(int argc, char **argv)
 			mkdir(clean_folder, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		}
 		sprintf(fou_hillas, "%s/%s.%s_out_hillas_%02.0f_%02.1f%s.csv", folder_outs, FolderList[jl].c_str(),RunNumbList[jl].c_str(), edge1, edge2, cleaning_type.c_str());
-		cout << folder_outs << endl;
+		cout << "output directory:\t" << folder_outs << endl;
 		ofstream fout_hillas(fou_hillas);
 		fout_hillas << "por,event_numb,unix_time,unix_time_long_ns,delta_time,error_deg,tel_az,tel_el,source_az,source_el,CR100phe,CR_portion,numb_pix,size,Xc[0],Yc[0],con2,length[0],width[0],dist[0],dist[1],dist[2],skewness[0],skewness[1],skewness[2],kurtosis,alpha[0],alpha[1],alpha[2],a_axis,b_axis,a_dist[1],b_dist[1],a_dist[2],b_dist[2],tel_ra,tel_dec,source_ra,source_dec,source_x,source_y,tracking,good,star,edge,weather_mark,alpha_c" << endl;
-		for ( int i=0; i < List_size; i++) {
-			cout << i << "\t" << FileListOuts[i] << endl;
+		for ( int i=0; i < List_size; i++) {   
+			cout << "file to process:\t" << i << "\t" << FileListOuts[i] << endl;
 			ifstream DataFileOuts;
 			DataFileOuts.open(FileListOuts[i].c_str());
 			if (DataFileOuts.is_open())
@@ -403,17 +403,23 @@ int main(int argc, char **argv)
 				int qqq = 0;
 				vector <Events> vector_events;
 				vector<vector<double> > vector_background( number_of_pixels_cam, vector<double> (0));
+
 				cout << i << "\t" << FileListPeds[i] << endl;
-				sprintf(fou, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/clean/", FolderList[jl].c_str(), ".cleanout_", edge1, "_", edge2, cleaning_type.c_str(), "_", i+1, ".txt");
+
+				sprintf(fou, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/clean/", FolderList[jl].c_str(),
+							 ".cleanout_", edge1, "_", edge2, cleaning_type.c_str(), "_", i+1, ".txt"); 
 				ofstream fout(fou);
-				sprintf(save_background_str, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/background/", FolderList[jl].c_str(), ".background_", edge1, "_", edge2, cleaning_type.c_str(), "_", i+1, ".txt");
+
+				sprintf(save_background_str, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/background/",
+							 FolderList[jl].c_str(), ".background_", edge1, "_", edge2,
+							  cleaning_type.c_str(), "_", i+1, ".txt");
 				ofstream fout_background(save_background_str);
 				cout << "output: created files:" << endl << "\t" << fou_hillas << endl;
 				if(save_background == 1){
 					cout << i << "\t" << fou << endl;
 					cout << i << "\t" << save_background_str << endl;
 				}
-				if(FileListOuts[i].compare(FileListOuts[i].size()-3, 3, FileListPeds[i], FileListPeds[i].size()-3, 3)==0) {
+				if(FileListOuts[i].compare(FileListOuts[i].size()-3, 3, FileListPeds[i], FileListPeds[i].size()-3, 3)==0) {     // checking if corresponding ped file number matches out file number
 					cout << "por=ped" << endl;
 					ifstream DataFilePeds;
 					DataFilePeds.open(FileListPeds[i].c_str());
@@ -430,11 +436,12 @@ int main(int argc, char **argv)
 							istringstream iss(str);
 							sigp=-40;
 							pedp=-40;
-							iss >> ff >> ch >> pedp >> sigp;
+							iss >> ff >> ch >> pedp >> sigp;  // ff is cluster number, ch is channel number, pedp is pedestal
 							//cout << pedp << "\t" << sigp << endl;
 							ped[ch][ff]=pedp;
 							if(cleaning == 1) {
-								sig[ch][ff]=sigp/(e[ff][ch]*sens[ff][ch]);
+								// nextlineneedsclarification
+								sig[ch][ff]=sigp/(e[ff][ch]*sens[ff][ch]);  // e[ff][ch] is single photoelectron amplitude in ADC codes
 							}
 							else{
 								sig[ch][ff] = 1;
@@ -456,33 +463,34 @@ int main(int argc, char **argv)
 							}
 							else{
 								istringstream iss(str);
-								iss >> n;
+								iss >> n;  // n is how many cluster chunks is below
 								//cout << n << endl;
 								for (int count = 0; count < 25; count++)
 								{
-									cluster[count]=0;
-									for (int coun = 0; coun < 64; coun++)
+									cluster[count]=0;                         // needsclarification
+									for (int coun = 0; coun < 64; coun++) 
 									{
-										b[coun][count]=0;
-										bmp[coun][count]=0;
-										background_marker[coun][count]=0;
+										b[coun][count]=0;                     // needsclarification
+										bmp[coun][count]=0;                   // amps from out file
+										background_marker[coun][count]=0;     // needsclarification
 									}
 								}
-								for( int q=1; q <= n; q++)
+								for( int q=1; q <= n; q++)   // q is iterator through clusters (not cluster number!)
 								{
 									getline(DataFileOuts, srr[q]);
 									istringstream ist(srr[q]);
 									//cout << str << endl;
-									ist >> f >> num >> timet;
+									ist >> f >> num >> timet;  // f is cluster_number from file
 									//cout << timet << endl;
-									if(q == 1) {
+									if(q == 1) {  
 										time_cam t;
 										t.set_time(FolderList[jl], timet);
 										//cout <<  date[0] << "\t" << date[1] << "\t" << date[2] << "\t" << date[3] << ":" <<  date[4] << ":" << date[5] << "," << date[6] << "." << date[7] << "."<< date[8] << endl;
-										event_unix_time = t.get_unix_time();
-										nsec_time = t.full_unix_nsec();
+										event_unix_time = t.get_unix_time();  // unix_time in seconds
+										nsec_time = t.full_unix_nsec();       // unix_time in nanoseconds
+										
 										//cout <<setprecision(6) << fixed << event_unix_time << "\t" << a->GetSec() << "." << a->GetNanoSec() << endl;
-										if(qqq == 0) {
+										if(qqq == 0) {  // only very first line in the file 
 											//cout << qqq << "\t" << event_unix_time << endl;
 											time_0 = event_unix_time;
 										}
@@ -492,7 +500,7 @@ int main(int argc, char **argv)
 									{
 										getline(DataFileOuts, str);
 										istringstream ist(str);
-										ist >>  bmp[ii][f] >> x >> bmp[ii+1][f] >> x >> bmp[ii+2][f] >> x >> bmp[ii+3][f] >> x >>
+										ist >>  bmp[ii][f] >> x >> bmp[ii+1][f] >> x >> bmp[ii+2][f] >> x >> bmp[ii+3][f] >> x >>  // every second input is trigger_status, not used
 										bmp[ii+4][f] >> x >> bmp[ii+5][f] >> x >> bmp[ii+6][f] >> x >> bmp[ii+7][f] >> x;
 										//cout << bmp[6][6] << endl;
 										/*cout << setw(3) << left << bmp[ii][f] << "\t" << setw(3) << left << ped[ii][f] <<
@@ -504,10 +512,11 @@ int main(int argc, char **argv)
 										   "\t" << setw(3) << left << bmp[ii+6][f] << "\t" << setw(3) << left << ped[ii+6][f] <<
 										   "\t" << setw(3) << left << bmp[ii+7][f] << "\t" << setw(3) << left << ped[ii+7][f] << endl;*/
 									}
+									
 									for(int ij = 0; ij < 64; ij = ij + 2) {
 										if(e[f][ij] > 0 || sens[f][ij] > 0) {
 											if((bmp[ij][f]) >= 3000) {
-												bmp[ij][f] = (bmp[ij+1][f] - ped[ij+1][f])/(e[f][ij+1]*sens[f][ij+1]);
+												bmp[ij][f] = (bmp[ij+1][f] - ped[ij+1][f])/(e[f][ij+1]*sens[f][ij+1]);   // every second is anode channel
 												//bmp[ij+1][f] = (bmp[ij+1][f] - ped[ij+1][f])/(e[f][ij+1]*sens[f][ij+1]);
 												sig[ij][f] = sig[ij+1][f];
 											}
@@ -517,7 +526,7 @@ int main(int argc, char **argv)
 											}
 										}
 										else{
-											bmp[ij][f] = 0;
+											bmp[ij][f] = 0;     // if ((e[f][ij] > 0 || sens[f][ij] > 0) == false), channel is set to zero
 											bmp[ij+1][f] = 0;
 										}
 										//sig[ij][f] = sig[ij][f]/(e[f][ij]*sens[f][ij]);
@@ -528,38 +537,45 @@ int main(int argc, char **argv)
 								{
 									for (int sc = 0; sc < 64; sc = sc + 2)
 									{
-										if(bmp[sc][f]>edge1*sig[sc][f])
-										{
+										if(bmp[sc][f]>edge1*sig[sc][f])     // edge1 == 14, edge2 == 70,    sig is sigma_of_channel_ped/(e * sens), sig == 1 when (cleaning == 0)
+										{    // above condition checks for picture threshold
+											 
+											 
+											 
+											 // bmp is a matrix of amps, bmp[channel_n][cluster_n] gives you amp
+											 // pos is a matrix of neighbor's channel number
+											 // pos[0][channel_n][cluster_n] gives channel_n of first neighbor
+											 // kkk[0][channel_n][cluster_n] gives cluster_n of first neighbor
 											if((bmp[pos[0][sc][f]][kkk[0][sc][f]]>edge2*sig[pos[0][sc][f]][kkk[0][sc][f]] && bmp[pos[0][sc][f]][kkk[0][sc][f]]>0) ||
 												(bmp[pos[1][sc][f]][kkk[1][sc][f]]>edge2*sig[pos[1][sc][f]][kkk[1][sc][f]] && bmp[pos[1][sc][f]][kkk[1][sc][f]]>0) ||
 												(bmp[pos[2][sc][f]][kkk[2][sc][f]]>edge2*sig[pos[2][sc][f]][kkk[2][sc][f]] && bmp[pos[2][sc][f]][kkk[2][sc][f]]>0) ||
 												(bmp[pos[3][sc][f]][kkk[3][sc][f]]>edge2*sig[pos[3][sc][f]][kkk[3][sc][f]] && bmp[pos[3][sc][f]][kkk[3][sc][f]]>0) ||
 												(bmp[pos[4][sc][f]][kkk[4][sc][f]]>edge2*sig[pos[4][sc][f]][kkk[4][sc][f]] && bmp[pos[4][sc][f]][kkk[4][sc][f]]>0) ||
 												(bmp[pos[5][sc][f]][kkk[5][sc][f]]>edge2*sig[pos[5][sc][f]][kkk[5][sc][f]] && bmp[pos[5][sc][f]][kkk[5][sc][f]]>0))
-											{
-												background_marker[sc][f] = 1;
+											{   // above condition checks if one of the neighbors is above picture boundary threshold
+												background_marker[sc][f] = 1;   // needsclarification, what does it mean background_marker==1???
 											}
 
 										}
 										else if(bmp[sc][f]>edge2*sig[sc][f])
-										{
+										{  // checks for picture boundary threshold
 											if((bmp[pos[0][sc][f]][kkk[0][sc][f]]>edge1*sig[pos[0][sc][f]][kkk[0][sc][f]] && bmp[pos[0][sc][f]][kkk[0][sc][f]]>0) ||
 												(bmp[pos[1][sc][f]][kkk[1][sc][f]]>edge1*sig[pos[1][sc][f]][kkk[1][sc][f]] && bmp[pos[1][sc][f]][kkk[1][sc][f]]>0) ||
 												(bmp[pos[2][sc][f]][kkk[2][sc][f]]>edge1*sig[pos[2][sc][f]][kkk[2][sc][f]] && bmp[pos[2][sc][f]][kkk[2][sc][f]]>0) ||
 												(bmp[pos[3][sc][f]][kkk[3][sc][f]]>edge1*sig[pos[3][sc][f]][kkk[3][sc][f]] && bmp[pos[3][sc][f]][kkk[3][sc][f]]>0) ||
 												(bmp[pos[4][sc][f]][kkk[4][sc][f]]>edge1*sig[pos[4][sc][f]][kkk[4][sc][f]] && bmp[pos[4][sc][f]][kkk[4][sc][f]]>0) ||
 												(bmp[pos[5][sc][f]][kkk[5][sc][f]]>edge1*sig[pos[5][sc][f]][kkk[5][sc][f]] && bmp[pos[5][sc][f]][kkk[5][sc][f]]>0))
-											{
-												background_marker[sc][f] = 1;
+											{    // checks neighbors for picture threshold
+												background_marker[sc][f] = 1;     //  needsclarification, maybe when background_marker remain 0, that channel is background
 											}
 										}
 									}
 									
 									for (int sc = 0; sc < 64; sc = sc + 2)
 									{
-										if(background_marker[sc][f] == 0 && bmp[sc][f] != 0)
-										{
-											if(vector_background[pix_number[sc][f]].size() < 10000 && pix_number[sc][f]>=0)
+										if(background_marker[sc][f] == 0 && bmp[sc][f] != 0)  
+										{    // vector<vector<double> > vector_background( number_of_pixels_cam, vector<double> (0));
+											if(vector_background[pix_number[sc][f]].size() < 10000 && pix_number[sc][f]>=0)  // marktofind needsclarification
 											{
 												vector_background[pix_number[sc][f]].push_back(bmp[sc][f]);
 											}
