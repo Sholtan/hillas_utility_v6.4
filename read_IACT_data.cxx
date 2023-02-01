@@ -35,7 +35,7 @@ double time_start_end(string run_date, string path){
 	int x, *date;
 	string str, timet;
 	ifstream DataFileOuts;
-	DataFileOuts.open(path.c_str());
+	DataFileOuts.open(path.c_str());  
 	if (!DataFileOuts.is_open()) {
 		cout << "ERROR out file " << run_date << " is not found" << endl << "check out files availability" << endl;
 		exit(0);
@@ -56,7 +56,7 @@ double time_start_end(string run_date, string path){
 			DataFileOuts.close();
 			t.get_human_string_data_time();
 			//cout << (2000 + date[2]) << "." << date[1] << "." << date[0] << "\t" << date[3] << ":" << date[4] << ":" << date[5] << "," << date[6] << "." << date[7] << "." << date[8] << endl;
-			return t.get_unix_time();
+			return t.get_unix_time();  // returns unix_time accurate to microseconds
 		}
 	}
 	return 0;
@@ -323,39 +323,58 @@ int main(int argc, char **argv)
         
 
 
-		int dir_err = -1, k = 0;
-		while(dir_err == -1){
+		int dir_err = -1, k = 0;  // k - out_directory_version, dir_err - flag for mkdir() function
+		while(dir_err == -1){  // program doesn't overwrites out_files, opens available 030122.01(k) directory
 			if(k == 0){
 				sprintf(folder_outs, "%s%s.%s", out_data_path.c_str(), FolderList[jl].c_str(),RunNumbList[jl].c_str());
 			}
 			else{
 				sprintf(folder_outs, "%s%s.%s(%d)", out_data_path.c_str(), FolderList[jl].c_str(),RunNumbList[jl].c_str(),k);
 			}
-			dir_err = mkdir(folder_outs, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+			dir_err = mkdir(folder_outs, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);  // 2d argument is permission mode
 			k++;
 		}
+
+
 		cout << "out directory " << folder_outs << " is created" << endl;
 		////////////////////////copy file param to directiry:
 		ifstream  src(argv[1], ios::binary);
 		sprintf(param_path_str, "%s/%s",  folder_outs, argv[1]);
 		ofstream  dst(param_path_str,   ios::binary);
-		dst << src.rdbuf();
+		dst << src.rdbuf();  // copies src(parram_file) contents to dst(param_file at out directory)
 
-    dst << src.rdbuf();
+    dst << src.rdbuf();      // ???
 		//find start and stop times of outs//////////////////////////////////////
 		int List_size = FileListOuts.size();
 		cout << "time of run start and end of portions:" << endl;
-		tim_start = time_start_end(FolderList[jl], FileListOuts[0]);
-		tim_end = 120 + time_start_end(FolderList[jl], FileListOuts[List_size - 1]);
+		tim_start = time_start_end(FolderList[jl], FileListOuts[0]);   // , 
+		
+		// cout << "FolderList[jl]: " << FolderList[jl] << endl;  // FolderList[jl] is date from param
+		// cout << "FileListOuts[0]: " << FileListOuts[0] << endl;  // FileListOuts[0] - abs_path of first file
+		// cout << "tim_start: " << tim_start << endl;   // returns unix_time accurate to microseconds for first event in file
+		// exit(1);
+
+
+
+		tim_end = 120 + time_start_end(FolderList[jl], FileListOuts[List_size - 1]); // FileListOuts[List_size - 1] - abs_path of last file
+
+		// cout << "tim_end: " << tim_end << endl;   // returns unix_time accurate to microseconds for first event in file + 120 seconds
+
+
+
+
+
+
+
 		//sprintf(month_year, "%s%d", calendar[stoi(FolderList[jl].substr(2,2))].c_str(), stoi(FolderList[jl].substr(4,2)));
 		//cout << month_year << endl;
 		vector<string> vector_wobble = wobble(param_wobble_path.c_str(), tim_start, tim_end);
 		cout << "input:" << endl;
 		for ( int i=0; i < vector_wobble.size(); i++) {
-			cout << i << "\t" << vector_wobble[i] << endl;
+			cout << i << "\t" << vector_wobble[i] << endl;        // pointing_data files that will be used...
 		}
 		////////////////////////////////////////////////////////////////////////
-		vector<vector<double> > vector_ccd = read_ccd(vector_wobble, tim_start, tim_end, clean_only);
+		vector<vector<double> > vector_ccd = read_ccd(vector_wobble, tim_start, tim_end, clean_only);  // table from pointing_data, first index is column, second index is row
 		int ccd_id = 0;
 		cout << "\t\tnumber of written ccd rows: " << vector_ccd[0].size() << endl;
 		////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,7 @@ vector <string> wobble_path;
 
 vector <string> wobble(string param_wobble_path, double time_start, double time_end) {
 	vector <string> vector_path;
-	sprintf(BashCommandFolder, "%s%s%s", "readlink -e ", param_wobble_path.c_str(),"pointing_data_* > List_wobble");
+	sprintf(BashCommandFolder, "%s%s%s", "readlink -e ", param_wobble_path.c_str(),"pointing_data_* > List_wobble");  // parse all "pointing_data_*"
 	//cout << BashCommandFolder << endl;
 	system(BashCommandFolder);
 
@@ -41,11 +41,17 @@ vector <string> wobble(string param_wobble_path, double time_start, double time_
 				break;
 			}
 			wobble_path.push_back(path);
-			int year_point = path.find("pointing_data_") + 14;
+			int year_point = path.find("pointing_data_") + 14;   // point where year starts, usually remains 14
 			//cout << unix_data(UTS, stoi(path.substr(50,4)), stoi(path.substr(55,2)), stoi(path.substr(58,2)), stoi(path.substr(61,2)), stoi(path.substr(64,2)), stoi(path.substr(68,2)), 0,0,0) << endl;
 			//cout << unix_data(UTS, stoi(path.substr(48,4)), stoi(path.substr(53,2)), stoi(path.substr(56,2)), stoi(path.substr(59,2)), stoi(path.substr(64,2)), stoi(path.substr(69,2)), 0,0,0)/1e6 << endl;
 			//cout << path.substr(year_point,4) << "\t" << path.substr(year_point + 5,2) << "\t" << path.substr(year_point + 8,2) << "\t" << path.substr(year_point + 11,2) << "\t" << path.substr(year_point + 14,2) << "\t" << path.substr(year_point + 17,2) << endl;
-			time_cam t(UTS, stoi(path.substr(year_point,4)), stoi(path.substr(year_point + 5,2)), stoi(path.substr(year_point + 8,2)), stoi(path.substr(year_point + 11,2)), stoi(path.substr(year_point + 14,2)), stoi(path.substr(year_point + 17,2)), 0,0,0);
+			time_cam t(UTS, stoi(path.substr(year_point,4)), 
+							stoi(path.substr(year_point + 5,2)), 
+							stoi(path.substr(year_point + 8,2)), 
+							stoi(path.substr(year_point + 11,2)), 
+							stoi(path.substr(year_point + 14,2)), 
+							stoi(path.substr(year_point + 17,2)), 
+							0,0,0);
 			wobble_time.push_back(t.get_unix_time());
 			//cout << wobble_time.size() << endl;
 		}
@@ -56,18 +62,18 @@ vector <string> wobble(string param_wobble_path, double time_start, double time_
 		//cout << wobble_time[0] << endl;
 		for(int i = 0; i < wobble_time.size(); i++) {
 			//cout << time_start << "\t" << wobble_time[i] << endl;
-			if(delta1 > abs(time_start - wobble_time[i])) {
+			if(delta1 > abs(time_start - wobble_time[i])) {    // delta1 will be minimum wobble_time element
 				delta1 = abs(time_start - wobble_time[i]);
 				t_start = i;
 				//cout << t_start << endl;
 			}
-			if(delta2 > abs(time_end - wobble_time[i]) && wobble_time[i] > time_end) {
+			if(delta2 > abs(time_end - wobble_time[i]) && wobble_time[i] > time_end) {     // minimum from those who is > time_end
 				delta2 = abs(time_end - wobble_time[i]);
 				t_end = i;
 				//cout << t_end << endl;
 			}
-			if(abs(time_start - wobble_time[i]) < 12*60*60){
-				vector_path.push_back(wobble_path[i]);
+			if(abs(time_start - wobble_time[i]) < 12*60*60){    // files for after less than 12 hours
+				vector_path.push_back(wobble_path[i]); 
 			}
 		}
 		cout << "wobble.cpp: delay between first time of ccd and out file name is: " << delta1/60 << " min" << endl;
@@ -89,13 +95,16 @@ vector <string> wobble(string param_wobble_path, double time_start, double time_
    vector <double> vector_tracking;
    vector <double> vector_zenit;
    vector <double> vector_good;*/
-vector<vector<double> > read_ccd(vector <string> vector_path, double tim_start, double tim_end, bool clean_only){ //читаемые из data_ccd столбцы //unix_time, error_deg, tel_ra, tel_dec, tel_az, tel_el, source_ra, source_dec, source_az, source_el, source_x, source_y, star_x, star_y, tracking, good, weather, alpha_c
+vector<vector<double> > read_ccd(vector <string> vector_path, double tim_start, double tim_end, bool clean_only){ 
+	//читаемые из data_ccd столбцы //unix_time, error_deg, tel_ra, tel_dec, tel_az, tel_el, source_ra, source_dec, source_az,
+		// source_el, source_x, source_y, star_x, star_y, tracking, good, weather, alpha_c
 	vector<vector<double> > vector_ccd( 18, vector<double> (0));
-	int column[18] = {0,4,5,6,7,8,13,14,15,16,17,18,23,24,25,26,27,28}; //читаемые из data_ccd столбцы //unix_time error_deg, tel_ra, tel_dec, tel_az, tel_el, source_ra, source_dec, source_az, 
-										//source_el, source_x, source_y, star_x, star_y, tracking, good, weather, alpha_c
+	int column[18] = {0,4,5,6,7,8,13,14,15,16,17,18,23,24,25,26,27,28}; //читаемые из data_ccd столбцы 
+					// [0] unix_time, [1] error_deg, [2] tel_ra, [3] tel_dec, [4] tel_az, [5] tel_el, [6] source_ra, [7] source_dec, [8] source_az, 
+						// [9] source_el, [10] source_x, [11] source_y, [12] star_x, [13] star_y, [14] tracking, [15] good, [16] weather, [17] alpha_c
 	double x;
 	string source, line;
-	for(int jj = 0; jj < vector_path.size(); jj++) {
+	for(int jj = 0; jj < vector_path.size(); jj++) {     // loop over pointing_data files
 		ifstream file_ccd(vector_path[jj]);
 		//cout << "wobble.cpp: " << vector_path[jj] << endl;
 		if (!file_ccd.is_open()) {
@@ -113,11 +122,11 @@ vector<vector<double> > read_ccd(vector <string> vector_path, double tim_start, 
 				stringstream ist(line);
 				double u_time = 0;
 				for(int i = 0; i < 29; i++) {
-					getline(ist, source, ',');
-					if (i == 0){
+					getline(ist, source, ',');     // reads all characters till next comma to source
+					if (i == 0){               // i == 0 => source is unix_time
 					u_time = atof(source.c_str());
 					}
-					if (u_time >= tim_start && u_time <= tim_end){
+					if (u_time >= tim_start && u_time <= tim_end){    //  only rows in the range (tim_start, tim_end)
 						//cout << source << endl;
 						for(int j = 0; j < 18; j++) {
 						//cout << i << "\t" << column[j] << endl;
@@ -133,7 +142,8 @@ vector<vector<double> > read_ccd(vector <string> vector_path, double tim_start, 
 		}
 		//cout << "size: " << vector_ccd[0].size() << endl;
 		file_ccd.close();
-		}	
+	}
+
 	if (clean_only == 1) {	
 		for(int j = 0; j < 18; j++) {	
 			vector_ccd[j].push_back(0);	
