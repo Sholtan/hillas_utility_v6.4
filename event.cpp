@@ -11,15 +11,15 @@ vector <int> pixel_number;
 vector <double> pixel_amp;
 vector <double> pixel_x;
 vector <double> pixel_y;
-int portion;
+int portion;     // file_number
 int number;
-double cr_sec;
+double cr_sec;  // needsclarification
 string nsec_time;
-int number_of_pixels;
+int number_of_pixels;    // number of picture pixels + picture boundary pixels
 double unix_time;
-double error_deg;
-double tel_az;
-double tel_el;
+double error_deg;   // needsclarification
+double tel_az;     
+double tel_el;    // needsclarification
 double tel_ra;
 double tel_dec;
 double source_ra;
@@ -30,12 +30,12 @@ double source_x;
 double source_y;
 double star_x;
 double star_y;
-int tracking;
-int good;
-double weather;
-double alpha_c;
-double delta;
-int id;
+int tracking;     // needsclarification
+int good;         // needsclarification
+double weather;   
+double alpha_c;    // needsclarification
+double delta;      // needsclarification
+int id;            // needsclarification
 void set_event(int por, int event_number, double tim, string nst, vector<vector<double> > pixel_parameter){
 	portion = por;
 	number = event_number;

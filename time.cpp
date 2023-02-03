@@ -13,8 +13,8 @@ int second;
 int mlsec;
 int mksec;
 int nsec;
-char hum_time[150];
-string unix_ling_time;
+char hum_time[150];    //needsclarification
+string unix_ling_time;    //needsclarification
 
 time_cam(int Ut, int y, int mon, int d, int h, int min, int sec, int mls, int mks, int nan){
 	UTS = Ut;
@@ -28,8 +28,34 @@ time_cam(int Ut, int y, int mon, int d, int h, int min, int sec, int mls, int mk
 	mksec = mks;
 	nsec = nan;
 }
-time_cam(){
+time_cam(){}
+
+
+
+double new_get_unix_time() {   
+	// function returns number of seconds since jan1 1970 UTC till date stored as attributes in this object
+	
+	time_t rawtime;  // this variable only needed to allocate struct tm somewhere (not working otherwise)
+	double nana = 0;  // variable for rounding to the microsecond
+	
+	struct tm * timeinfo;  //Structure holding a calendar date and time broken down into its components. note! memory is not allocated yet!
+	
+	timeinfo = localtime ( &rawtime );  // localtime converts time_t to tm as local time (allocates memory for struct tm)
+
+	//now modify the timeinfo to the given date: 
+	timeinfo->tm_year   = year - 1900;//year = 20, 2020 - 1900, struct tm stores year as years passed since 1900
+	timeinfo->tm_mon    = month - 1;//months since January - [0,11]
+	timeinfo->tm_mday   = day;      //day of the month - [1,31]
+	timeinfo->tm_hour   = hour+UTS;     //hours since midnight - [0,23]
+	timeinfo->tm_min    = minute;      //minutes after the hour - [0,59]
+	timeinfo->tm_sec    = second;      //seconds after the minute - [0,59]
+	if(nsec >= 500) {    // rounding to the microsecond
+		nana = 1;
+	}
+	// mktime Converts local calendar time to a time since epoch as a time_t object
+	return mktime(timeinfo) + double(mlsec) * 1e-3 + double(mksec + nana) * 1e-6;
 }
+
 double get_unix_time() {
 	time_t rawtime;
 	double nana = 0;
@@ -51,6 +77,8 @@ double get_unix_time() {
 	}
 	return mktime(timeinfo) + double(mlsec) * 1e-3 + double(mksec + nana) * 1e-6;
 }
+
+
 
 unsigned int get_nsec(){
 	return mlsec*1e6 + mksec*1e3 + nsec;
@@ -134,5 +162,5 @@ char* char_human_string_time(){
 }
 
 private:
-int UTS = 3;
+int UTS = 3;  // should be UTC ??? needsclarification Coordinated Universal Time (Moscow time zone)
 };
