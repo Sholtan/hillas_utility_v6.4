@@ -84,7 +84,7 @@ string full_unix_nsec(){
 	timeinfo->tm_min    = minute;      //minutes after the hour - [0,59]
 	timeinfo->tm_sec    = second;      //seconds after the minute - [0,59]
 	//cout << mktime(timeinfo) << "\t" << mlsec << "\t" << mksec << "\t" << nsec << endl;
-	sprintf(unix_ling_char, "%010d%03d%03d%03d", mktime(timeinfo), mlsec, mksec, nsec);
+	sprintf(unix_ling_char, "%010d%03d%03d%03d", int(mktime(timeinfo)), mlsec, mksec, nsec);
 	unix_ling_time = unix_ling_char;
 	return unix_ling_time;
 }

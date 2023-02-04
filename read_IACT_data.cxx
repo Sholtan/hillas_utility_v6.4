@@ -68,10 +68,10 @@ void write_amp_ped_abs_path(vector<string> *amp_files_abs_paths,
 void make_out_dir(char **config_file_name, int date_run_index); // creates out directory, copies config file there
 void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index, 
 	vector<string> *amp_files_abs_paths, int number_of_portions_to_process);// fills vector_ccd with "pointing_data_*" files data
+//void fill_amp_mtrx(ifstream *DataFileOuts, int portion_to_process_index);
 
 
-
-
+string my_for_pause_variable;
 
 int main(int argc, char **argv)
 {
@@ -106,11 +106,11 @@ int main(int argc, char **argv)
 		ofstream fout_hillas(fou_hillas);
 		// write header:
 		fout_hillas << "por,event_numb,unix_time,unix_time_long_ns,delta_time,error_deg,tel_az,tel_el,source_az,source_el,CR100phe,CR_portion,numb_pix,size,Xc[0],Yc[0],con2,length[0],width[0],dist[0],dist[1],dist[2],skewness[0],skewness[1],skewness[2],kurtosis,alpha[0],alpha[1],alpha[2],a_axis,b_axis,a_dist[1],b_dist[1],a_dist[2],b_dist[2],tel_ra,tel_dec,source_ra,source_dec,source_x,source_y,tracking,good,star,edge,weather_mark,alpha_c" << endl;
-		for (int i = 0; i < number_of_portions_to_process; i++)
+		for (int portion_to_process_index = 0; portion_to_process_index < number_of_portions_to_process; portion_to_process_index++)
 		{ // loop over files to process
-			cout << "file to process:\t" << i << "\t" << amp_files_abs_paths[i] << endl;
+			cout << "file to process:\t" << portion_to_process_index << "\t" << amp_files_abs_paths[portion_to_process_index] << endl;
 			ifstream DataFileOuts;
-			DataFileOuts.open(amp_files_abs_paths[i].c_str());
+			DataFileOuts.open(amp_files_abs_paths[portion_to_process_index].c_str());
 			if (DataFileOuts.is_open())
 			{
 				for (int coun = 0; coun < 25; coun++)
@@ -125,28 +125,28 @@ int main(int argc, char **argv)
 				vector<Events> vector_events;
 				vector<vector<double>> vector_background(number_of_pixels_cam, vector<double>(0));
 
-				cout << i << "\t" << ped_files_abs_paths[i] << endl;
+				cout << portion_to_process_index << "\t" << ped_files_abs_paths[portion_to_process_index] << endl;
 
 				sprintf(fou, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/clean/", dates_to_process[date_run_index].c_str(),
-						".cleanout_", edge1, "_", edge2, cleaning_type.c_str(), "_", i + 1, ".txt");
+						".cleanout_", edge1, "_", edge2, cleaning_type.c_str(), "_", portion_to_process_index + 1, ".txt");
 				ofstream fout(fou);
 
 				sprintf(save_background_str, "%s%s%s%s%02.0f%s%02.1f%s%s%03d%s", folder_outs, "/background/",
 						dates_to_process[date_run_index].c_str(), ".background_", edge1, "_", edge2,
-						cleaning_type.c_str(), "_", i + 1, ".txt");
+						cleaning_type.c_str(), "_", portion_to_process_index + 1, ".txt");
 				ofstream fout_background(save_background_str);
 				cout << "output: created files:" << endl
 					 << "\t" << fou_hillas << endl;
 				if (save_background == 1)
 				{
-					cout << i << "\t" << fou << endl;
-					cout << i << "\t" << save_background_str << endl;
+					cout << portion_to_process_index << "\t" << fou << endl;
+					cout << portion_to_process_index << "\t" << save_background_str << endl;
 				}
-				if (amp_files_abs_paths[i].compare(amp_files_abs_paths[i].size() - 3, 3, ped_files_abs_paths[i], ped_files_abs_paths[i].size() - 3, 3) == 0)
+				if (amp_files_abs_paths[portion_to_process_index].compare(amp_files_abs_paths[portion_to_process_index].size() - 3, 3, ped_files_abs_paths[portion_to_process_index], ped_files_abs_paths[portion_to_process_index].size() - 3, 3) == 0)
 				{ // checking if corresponding ped file number matches out file number
 					cout << "por=ped" << endl;
 					ifstream DataFilePeds;
-					DataFilePeds.open(ped_files_abs_paths[i].c_str());
+					DataFilePeds.open(ped_files_abs_paths[portion_to_process_index].c_str());
 					if (DataFilePeds.is_open())
 					{
 						// cout << "peds read" << endl;
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 							// cout << str << endl;
 							if (DataFilePeds.eof())
 							{
-								cout << "PED " << i + 1 << " is ended" << endl;
+								cout << "PED " << portion_to_process_index + 1 << " is ended" << endl;
 								break;
 							}
 							istringstream iss(str);
@@ -189,42 +189,34 @@ int main(int argc, char **argv)
 							getline(DataFileOuts, str);
 							if (DataFileOuts.eof())
 							{
-								cout << "outs " << i + 1 << " is ended" << endl;
+								cout << "outs " << portion_to_process_index + 1 << " is ended" << endl;
 								break;
 							}
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
+
+
+
+
+
+
+
+
+
+
+
+
+
 								// here amp_mtrx filling starts
 								istringstream iss(str);
 								int clasters_in_event_n;
 								iss >> clasters_in_event_n;
 								// cout << clasters_in_event_n << endl;
-								for (int count = 0; count < 25; count++)
+								for (int cltr_n = 0; cltr_n < 25; cltr_n++)
 								{
-									cluster[count] = 0; // needsclarification pre-initialization
-									for (int coun = 0; coun < 64; coun++)
+									cluster[cltr_n] = 0; // needsclarification pre-initialization
+									for (int ch_n = 0; ch_n < 64; ch_n++)
 									{
-										amps_mtrx_s_ev[coun][count] = 0;				// amps from out file, pre-initialization
-										background_marker[coun][count] = 0; // pre-initialization, background_marker[i][j] will be set to 1 for image and boundary pixels
+										amps_mtrx_s_ev[ch_n][cltr_n] = 0;				// amps from out file, pre-initialization
+										background_marker[ch_n][cltr_n] = 0; // pre-initialization, background_marker[i][j] will be set to 1 for image and boundary pixels
 									}
 								}
 								for (int clstr_iter_in_event = 1; clstr_iter_in_event <= clasters_in_event_n; clstr_iter_in_event++)
@@ -247,7 +239,7 @@ int main(int argc, char **argv)
 										// cout <<setprecision(6) << fixed << event_unix_time << "\t" << a->GetSec() << "." << a->GetNanoSec() << endl;
 										if (very_first_event_in_file_marker == 0)
 										{ // only very first line in the file
-											// cout << very_first_event_in_file_marker << "\t" << event_unix_time << endl;
+											//cout << "very_first_event_in_file_marker is assigned only one time and its equal: " << very_first_event_in_file_marker << "\t" << event_unix_time << endl;
 											very_first_event_in_file_unix_time = event_unix_time;
 										}
 									}
@@ -295,18 +287,7 @@ int main(int argc, char **argv)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+								
 								for (int f = 1; f <= 25; f++)
 								{
 									for (int sc = 0; sc < 64; sc = sc + 2)
@@ -396,7 +377,9 @@ int main(int argc, char **argv)
 									}
 								}
 								// i+1 is file_number, event_number is event_number
-								event.set_event(i + 1, event_number, event_unix_time, nsec_time, vector_pixel);
+								//cout << "\n\n\n\n\n";
+								//cout << "Event is set, event_number: " << event_number << endl;
+								event.set_event(portion_to_process_index + 1, event_number, event_unix_time, nsec_time, vector_pixel);
 								// event.ccd_id(vector_ccd);
 
 								// yel lines:
@@ -412,8 +395,11 @@ int main(int argc, char **argv)
 								cout << setprecision(10) << "event.unix_time-very_first_event_in_file_unix_time: " << event.unix_time-very_first_event_in_file_unix_time << endl;
 								cout << "\n\n\n";*/
 
+								//cout << setprecision(10) << "Event number: " << event.number << "\tevent.unix_time: " << event.unix_time << "\t very_first_event_time: " << very_first_event_in_file_unix_time << "\tevent.number_of_pixels: " << event.number_of_pixels << endl;
+								//cout << "this should be less/equal zero, first_event + 12 - event.unix_time:" << (very_first_event_in_file_unix_time + 12. - event.unix_time) << endl;
 								if (very_first_event_in_file_unix_time + 12. <= event.unix_time && event.number_of_pixels > 3)
-								{
+								{     // NEEDSCLARIFICATION!!! WHY SKIP EVENTS IN FIRST 12 SECONDS???
+									//cout << "Event is accepted\n";
 									// cout << very_first_event_in_file_unix_time << "\t" << event_unix_time << endl;
 									if (event.number_of_pixels > 0)
 									{
@@ -442,8 +428,21 @@ int main(int argc, char **argv)
 										}
 									}
 								}
+								//else
+								//{
+								//	cout << "Event was not accepted\n";
+								//}
+								//cout << "pause, when done enter int number: ";
+								//if(event.number % 500 == 0)
+								//{
+									//cin >> my_for_pause_variable;
+								//}
+						
+								//cout << "\n\n\n\n\n";
+
+
 								very_first_event_in_file_marker++;
-						}
+						}  // loop through events in amp file ended
 					}
 				}
 				fout.close();
@@ -481,7 +480,7 @@ int main(int argc, char **argv)
 				// por, event_numb, unix_time, delta_time, error_deg, altitude, CR5sec, CR_portion, numb_pix, size, Xc[0],Yc[0], con2, length[0], width[0], dist[0], dist[1], dist[2], azwidth[1], azwidth[2], miss[1], miss[2], alpha[0], alpha[1], alpha[2], source_x, source_y, source_ra, source_dec, tracking, good
 				vector_events.clear();
 			}
-		}
+		} // loop over files to process ended
 		fout_hillas.close();
 	}
 	// ylines:
