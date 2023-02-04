@@ -32,7 +32,7 @@ time_cam(){}
 
 
 
-double new_get_unix_time() {   
+double get_unix_time() {   
 	// function returns number of seconds since jan1 1970 UTC till date stored as attributes in this object
 	
 	time_t rawtime;  // this variable only needed to allocate struct tm somewhere (not working otherwise)
@@ -40,6 +40,8 @@ double new_get_unix_time() {
 	
 	struct tm * timeinfo;  //Structure holding a calendar date and time broken down into its components. note! memory is not allocated yet!
 	
+	time ( &rawtime ); //or: rawtime = time(0);
+
 	timeinfo = localtime ( &rawtime );  // localtime converts time_t to tm as local time (allocates memory for struct tm)
 
 	//now modify the timeinfo to the given date: 
@@ -56,27 +58,7 @@ double new_get_unix_time() {
 	return mktime(timeinfo) + double(mlsec) * 1e-3 + double(mksec + nana) * 1e-6;
 }
 
-double get_unix_time() {
-	time_t rawtime;
-	double nana = 0;
-	struct tm * timeinfo;
-	/* get current timeinfo: */
-	time ( &rawtime ); //or: rawtime = time(0);
-	/* convert to struct: */
-	timeinfo = localtime ( &rawtime );
-	//cout << mktime (timeinfo) << endl;
-	/* now modify the timeinfo to the given date: */
-	timeinfo->tm_year   = year - 1900;//year = 20, 2020 - 1900
-	timeinfo->tm_mon    = month - 1;//months since January - [0,11]
-	timeinfo->tm_mday   = day;      //day of the month - [1,31]
-	timeinfo->tm_hour   = hour+UTS;     //hours since midnight - [0,23]
-	timeinfo->tm_min    = minute;      //minutes after the hour - [0,59]
-	timeinfo->tm_sec    = second;      //seconds after the minute - [0,59]
-	if(nsec >= 500) {
-		nana = 1;
-	}
-	return mktime(timeinfo) + double(mlsec) * 1e-3 + double(mksec + nana) * 1e-6;
-}
+
 
 
 
@@ -151,7 +133,7 @@ void get_human_string_time(){
 	printf("%02d:%02d:%02d,%03d.%03d.%03d\n", hour, minute, second, mlsec, mksec, nsec);
 }
 
-void get_human_string_data_time(){
+void print_human_string_data_time(){
 	printf("%02d.%02d.%02d\t%02d:%02d:%02d,%03d.%03d.%03d\n", day, month, year, hour, minute, second, mlsec, mksec, nsec);
 }
 
