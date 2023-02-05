@@ -36,7 +36,7 @@ double pedp, sigp, amps_mtrx_s_ev[64][25] /*amplitudes matrix for single event*/
 	rel_sens, very_first_event_in_file_unix_time = 1, event_unix_time = 0;
 double edge1, edge2;
 string str, srr[25], event_time, ped_folder[4] = {"peds", "peds.m3s", "peds.mediana", "peds_median_my"},
-							data_path, out_data_path, hillas_table_name, clean_out_name, param_wobble_path, cleaning_type;
+								 data_path, out_data_path, hillas_table_name, clean_out_name, param_wobble_path, cleaning_type;
 
 double hour, minute, sec, mksec, mlsec, nsec, time0, x_pos[64][25], y_pos[64][25], first_file_first_event_unix_timestamp = 0,
 																				   last_file_first_event_unix_timestamp_plus120 = 0, event_delay;
@@ -60,16 +60,15 @@ vector<string> runs_to_process;	 // run list
 
 double time_start_end(string run_date, string path); // returns timestamp of given date and time of first event of file at given path
 int parse_files_abs_path(string data_path, string data_folder, string run_numb);
-void read_config_file(string config_file_name); // initializes global strings, date list and run list
-void read_factors_file(string factor_file_name); // initializes e[25][64], sens[25][64]
-void write_neighbors_matrices(string xy_coords_file_name);   // initializes mtrx_neigh_cls_n, mtrx_neigh_chnl_n
-void write_amp_ped_abs_path(vector<string> *amp_files_abs_paths, 
-	vector<string> *ped_files_abs_paths, int date_run_index); // writes amp_files_abs_paths vector and ped_files_abs_paths vector
-void make_out_dir(char **config_file_name, int date_run_index); // creates out directory, copies config file there
-void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index, 
-	vector<string> *amp_files_abs_paths, int number_of_portions_to_process);// fills vector_ccd with "pointing_data_*" files data
-//void fill_amp_mtrx(ifstream *DataFileOuts, int portion_to_process_index);
-
+void read_config_file(string config_file_name);			   // initializes global strings, date list and run list
+void read_factors_file(string factor_file_name);		   // initializes e[25][64], sens[25][64]
+void write_neighbors_matrices(string xy_coords_file_name); // initializes mtrx_neigh_cls_n, mtrx_neigh_chnl_n
+void write_amp_ped_abs_path(vector<string> *amp_files_abs_paths,
+							vector<string> *ped_files_abs_paths, int date_run_index); // writes amp_files_abs_paths vector and ped_files_abs_paths vector
+void make_out_dir(char **config_file_name, int date_run_index);						  // creates out directory, copies config file there
+void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index,
+						vector<string> *amp_files_abs_paths, int number_of_portions_to_process); // fills vector_ccd with "pointing_data_*" files data
+void fill_amp_mtrx(ifstream *DataFileOuts, int portion_to_process_index, int date_run_index, int *very_first_event_in_file_marker);
 
 string my_for_pause_variable;
 
@@ -92,8 +91,8 @@ int main(int argc, char **argv)
 		int number_of_portions_to_process = amp_files_abs_paths.size();
 		int ccd_id = 0;
 		vector<vector<double>> vector_ccd;
-		read_pointing_data(&vector_ccd,date_run_index, &amp_files_abs_paths,
-			number_of_portions_to_process);
+		read_pointing_data(&vector_ccd, date_run_index, &amp_files_abs_paths,
+						   number_of_portions_to_process);
 		if (save_background == 1)
 		{
 			sprintf(background_folder, "%s%s", folder_outs, "/background");
@@ -121,7 +120,7 @@ int main(int argc, char **argv)
 						sig[count][coun] = 0;
 					}
 				}
-				
+
 				vector<Events> vector_events;
 				vector<vector<double>> vector_background(number_of_pixels_cam, vector<double>(0));
 
@@ -177,14 +176,11 @@ int main(int argc, char **argv)
 							// cout << ff << "\t" << ch << "\t" << ped[ch][ff] << "\t" << sig[ch][ff] << endl;
 						}
 						DataFilePeds.close();
-						/*if(i == 0) {
-							cout << "Check all parameters and press any key to continue" << endl;
-							cin >> press;
-						}*/
+						
 
 						int very_first_event_in_file_marker = 0;
 						while (!DataFileOuts.eof())
-						{  // loop through events in amp file
+						{ // loop through events in amp file
 							int *date;
 							getline(DataFileOuts, str);
 							if (DataFileOuts.eof())
@@ -192,257 +188,166 @@ int main(int argc, char **argv)
 								cout << "outs " << portion_to_process_index + 1 << " is ended" << endl;
 								break;
 							}
+							fill_amp_mtrx(&DataFileOuts, portion_to_process_index, date_run_index, &very_first_event_in_file_marker);
 
-
-
-
-
-
-
-
-
-
-
-
-
-								// here amp_mtrx filling starts
-								istringstream iss(str);
-								int clasters_in_event_n;
-								iss >> clasters_in_event_n;
-								// cout << clasters_in_event_n << endl;
-								for (int cltr_n = 0; cltr_n < 25; cltr_n++)
+							for (int f = 1; f <= 25; f++)
+							{
+								for (int sc = 0; sc < 64; sc = sc + 2)
 								{
-									cluster[cltr_n] = 0; // needsclarification pre-initialization
-									for (int ch_n = 0; ch_n < 64; ch_n++)
-									{
-										amps_mtrx_s_ev[ch_n][cltr_n] = 0;				// amps from out file, pre-initialization
-										background_marker[ch_n][cltr_n] = 0; // pre-initialization, background_marker[i][j] will be set to 1 for image and boundary pixels
-									}
-								}
-								for (int clstr_iter_in_event = 1; clstr_iter_in_event <= clasters_in_event_n; clstr_iter_in_event++)
-								{
-									getline(DataFileOuts, srr[clstr_iter_in_event]);
-									istringstream ist(srr[clstr_iter_in_event]);
-									ist >> clstr_number >> event_number >> event_time;
-									if (clstr_iter_in_event == 1)
-									{
-										time_cam t;
-										t.set_time(dates_to_process[date_run_index], event_time);
-										// cout <<  date[0] << "\t" << date[1] << "\t" << date[2] << "\t" << date[3] << ":" <<  date[4] << ":" << date[5] << "," << date[6] << "." << date[7] << "."<< date[8] << endl;
-										event_unix_time = t.get_unix_time(); // unix_time in seconds,  needsclarification
+									if (amps_mtrx_s_ev[sc][f] > edge1 * sig[sc][f]) // edge1 == 14, edge2 == 7,    sig is sigma_of_channel_ped/(e * sens), sig == 1 when (cleaning == 0)
+									{												// above condition checks for picture threshold
 
-										// cout << setprecision(10) << "\n\n LOOK: " << event_unix_time << "\n\n";   // y
-										//  exit(1); // y
-
-										nsec_time = t.full_unix_nsec(); // unix_time in nanoseconds
-
-										// cout <<setprecision(6) << fixed << event_unix_time << "\t" << a->GetSec() << "." << a->GetNanoSec() << endl;
-										if (very_first_event_in_file_marker == 0)
-										{ // only very first line in the file
-											//cout << "very_first_event_in_file_marker is assigned only one time and its equal: " << very_first_event_in_file_marker << "\t" << event_unix_time << endl;
-											very_first_event_in_file_unix_time = event_unix_time;
+										// amps_mtrx_s_ev is a matrix of amps, amps_mtrx_s_ev[channel_n][cluster_n] gives you amp
+										// mtrx_neigh_chnl_n is a matrix of neighbor's channel number
+										// mtrx_neigh_chnl_n[0][channel_n][cluster_n] gives channel_n of first neighbor
+										// mtrx_neigh_cls_n[0][channel_n][cluster_n] gives cluster_n of first neighbor
+										if ((amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] >
+												 edge2 * sig[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 0))
+										{								  // above condition checks if one of the neighbors is above picture boundary threshold
+											background_marker[sc][f] = 1; // needsclarification, what does it mean background_marker==1???
 										}
 									}
-									cluster[clstr_iter_in_event] = clstr_number;
-									for (int ch_n = 0; ch_n < 64; ch_n = ch_n + 8)
-									{
-										getline(DataFileOuts, str);
-										istringstream ist(str);
-										ist >> amps_mtrx_s_ev[ch_n][clstr_number] >> x >> // every second input is trigger_status, not used
-											amps_mtrx_s_ev[ch_n + 1][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 2][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 3][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 4][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 5][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 6][clstr_number] >> x >> 
-											amps_mtrx_s_ev[ch_n + 7][clstr_number] >> x;
+									else if (amps_mtrx_s_ev[sc][f] > edge2 * sig[sc][f])
+									{ // checks for picture boundary threshold
+										if ((amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 0) ||
+											(amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] >
+												 edge1 * sig[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] &&
+											 amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 0))
+										{								  // checks neighbors for picture threshold
+											background_marker[sc][f] = 1; //  needsclarification, maybe when background_marker remain 0, that channel is background
+										}
 									}
-									for (int ch_n = 0; ch_n < 64; ch_n = ch_n + 2)
-									{
-										if (e[clstr_number][ch_n] > 0 || sens[clstr_number][ch_n] > 0)
+								}
+
+								for (int sc = 0; sc < 64; sc = sc + 2)
+								{
+									if (background_marker[sc][f] == 0 && amps_mtrx_s_ev[sc][f] != 0)
+									{																					   // vector<vector<double> > vector_background( number_of_pixels_cam, vector<double> (0));
+										if (vector_background[pix_number[sc][f]].size() < 10000 && pix_number[sc][f] >= 0) // marktofind needsclarification
 										{
-											if ((amps_mtrx_s_ev[ch_n][clstr_number]) >= 3000)
-											{
-												amps_mtrx_s_ev[ch_n][clstr_number] = (amps_mtrx_s_ev[ch_n + 1][clstr_number] - ped[ch_n + 1][clstr_number]) / (e[clstr_number][ch_n + 1] * sens[clstr_number][ch_n + 1]); // every second is anode channel
-												// amps_mtrx_s_ev[ch_n+1][clstr_number] = (amps_mtrx_s_ev[ch_n+1][clstr_number] - ped[ch_n+1][clstr_number])/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
-												sig[ch_n][clstr_number] = sig[ch_n + 1][clstr_number];
-											}
-											else
-											{
-												amps_mtrx_s_ev[ch_n][clstr_number] = (amps_mtrx_s_ev[ch_n][clstr_number] - ped[ch_n][clstr_number]) / (e[clstr_number][ch_n] * sens[clstr_number][ch_n]);
-												// amps_mtrx_s_ev[ch_n+1][clstr_number] = (amps_mtrx_s_ev[ch_n+1][clstr_number] - ped[ch_n+1][clstr_number])/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
-											}
+											vector_background[pix_number[sc][f]].push_back(amps_mtrx_s_ev[sc][f]); // vector_background will have all background signal, the order of pixels in vector_background is from order of rows from neighbors file "neighbours.IACT01"
 										}
-										else
-										{
-											amps_mtrx_s_ev[ch_n][clstr_number] = 0; // if ((e[clstr_number][ch_n] > 0 || sens[clstr_number][ch_n] > 0) == false), channel is set to zero
-											amps_mtrx_s_ev[ch_n + 1][clstr_number] = 0;
-										}
-										// sig[ch_n][clstr_number] = sig[ch_n][clstr_number]/(e[clstr_number][ch_n]*sens[clstr_number][ch_n]);
-										// sig[ch_n+1][clstr_number] = sig[ch_n+1][clstr_number]/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
+										amps_mtrx_s_ev[sc][f] = 0;
 									}
 								}
-								// here amp_mtrx filling ends 
-
-
-
-
-								
-								for (int f = 1; f <= 25; f++)
+							}
+							// cout << "ok" << endl;
+							
+							vector<vector<double>> vector_pixel(5, vector<double>(0));
+							for (int count = 0; count < 25; count++)
+							{
+								for (int coun = 0; coun < 64; coun += 2)
 								{
-									for (int sc = 0; sc < 64; sc = sc + 2)
+									if (amps_mtrx_s_ev[coun][count] != 0)
 									{
-										if (amps_mtrx_s_ev[sc][f] > edge1 * sig[sc][f]) // edge1 == 14, edge2 == 70,    sig is sigma_of_channel_ped/(e * sens), sig == 1 when (cleaning == 0)
-										{									 // above condition checks for picture threshold
-
-											// amps_mtrx_s_ev is a matrix of amps, amps_mtrx_s_ev[channel_n][cluster_n] gives you amp
-											// mtrx_neigh_chnl_n is a matrix of neighbor's channel number
-											// mtrx_neigh_chnl_n[0][channel_n][cluster_n] gives channel_n of first neighbor
-											// mtrx_neigh_cls_n[0][channel_n][cluster_n] gives cluster_n of first neighbor
-											if ((amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 
-													edge2 * sig[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 0))
-											{								  // above condition checks if one of the neighbors is above picture boundary threshold
-												background_marker[sc][f] = 1; // needsclarification, what does it mean background_marker==1???
-											}
-										}
-										else if (amps_mtrx_s_ev[sc][f] > edge2 * sig[sc][f])
-										{ // checks for picture boundary threshold
-											if ((amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[0][sc][f]][mtrx_neigh_cls_n[0][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[1][sc][f]][mtrx_neigh_cls_n[1][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[2][sc][f]][mtrx_neigh_cls_n[2][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[3][sc][f]][mtrx_neigh_cls_n[3][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[4][sc][f]][mtrx_neigh_cls_n[4][sc][f]] > 0) ||
-												(amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 
-													edge1 * sig[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] && 
-													amps_mtrx_s_ev[mtrx_neigh_chnl_n[5][sc][f]][mtrx_neigh_cls_n[5][sc][f]] > 0))
-											{								  // checks neighbors for picture threshold
-												background_marker[sc][f] = 1; //  needsclarification, maybe when background_marker remain 0, that channel is background
-											}
-										}
-									}
-
-									for (int sc = 0; sc < 64; sc = sc + 2)
-									{
-										if (background_marker[sc][f] == 0 && amps_mtrx_s_ev[sc][f] != 0)
-										{																					   // vector<vector<double> > vector_background( number_of_pixels_cam, vector<double> (0));
-											if (vector_background[pix_number[sc][f]].size() < 10000 && pix_number[sc][f] >= 0) // marktofind needsclarification
-											{
-												vector_background[pix_number[sc][f]].push_back(amps_mtrx_s_ev[sc][f]); // vector_background will have all background signal, the order of pixels in vector_background is from order of rows from neighbors file "neighbours.IACT01"
-											}
-											amps_mtrx_s_ev[sc][f] = 0;
-										}
+										vector_pixel[0].push_back(count);						// first vector is cluster_number_
+										vector_pixel[1].push_back(int(coun / 2));				// second vector is channel_number/2
+										vector_pixel[4].push_back(amps_mtrx_s_ev[coun][count]); // fifth vector is signal amp (already divided by (e*sens))
+										vector_pixel[2].push_back(x_pos[coun][count]);			// third vector is x position of pixel
+										vector_pixel[3].push_back(y_pos[coun][count]);			// fourth vector is y position of pixel
 									}
 								}
-								// cout << "ok" << endl;
-								Events event;
-								vector<vector<double>> vector_pixel(5, vector<double>(0));
-								for (int count = 0; count < 25; count++)
+							}
+							// i+1 is file_number, event_number is event_number
+							// cout << "\n\n\n\n\n";
+							// cout << "Event is set, event_number: " << event_number << endl;
+							Events event;
+							event.set_event(portion_to_process_index + 1, event_number, event_unix_time, nsec_time, vector_pixel);
+							
+							// event.ccd_id(vector_ccd);
+
+							// yel lines:
+							/*if (!(y_set_times.find(very_first_event_in_file_unix_time) != y_set_times.end()))
+							{
+								y_set_times.insert(very_first_event_in_file_unix_time);
+								y_vector_times.push_back(very_first_event_in_file_unix_time);
+							}
+							cout << "\n\n\n";
+							cout << setprecision(10) << "lets look at very_first_event_in_file_unix_time   : " << very_first_event_in_file_unix_time << endl;
+							cout << setprecision(10) << "and event.unix_time   : " << event.unix_time << endl;
+							cout << setprecision(10) << "very_first_event_in_file_unix_time + 12.          : " << very_first_event_in_file_unix_time + 12 << endl;
+							cout << setprecision(10) << "event.unix_time-very_first_event_in_file_unix_time: " << event.unix_time-very_first_event_in_file_unix_time << endl;
+							cout << "\n\n\n";*/
+
+							// cout << setprecision(10) << "Event number: " << event.number << "\tevent.unix_time: " << event.unix_time << "\t very_first_event_time: " << very_first_event_in_file_unix_time << "\tevent.number_of_pixels: " << event.number_of_pixels << endl;
+							// cout << "this should be less/equal zero, first_event + 12 - event.unix_time:" << (very_first_event_in_file_unix_time + 12. - event.unix_time) << endl;
+							if (very_first_event_in_file_unix_time + 12. <= event.unix_time && event.number_of_pixels > 3)
+							{ // NEEDSCLARIFICATION!!! WHY SKIP EVENTS IN FIRST 12 SECONDS???
+								// cout << "Event is accepted\n";
+								//  cout << very_first_event_in_file_unix_time << "\t" << event_unix_time << endl;
+								if (event.number_of_pixels > 0)
 								{
-									for (int coun = 0; coun < 64; coun += 2)
-									{
-										if (amps_mtrx_s_ev[coun][count] != 0)
-										{
-											vector_pixel[0].push_back(count);			   // first vector is cluster_number_
-											vector_pixel[1].push_back(int(coun / 2));	   // second vector is channel_number/2
-											vector_pixel[4].push_back(amps_mtrx_s_ev[coun][count]);   // third vector is signal amp (already divided by (e*sens))
-											vector_pixel[2].push_back(x_pos[coun][count]); // fourth vector is x position of pixel
-											vector_pixel[3].push_back(y_pos[coun][count]); // fifth vector is y position of pixel
-										}
-									}
-								}
-								// i+1 is file_number, event_number is event_number
-								//cout << "\n\n\n\n\n";
-								//cout << "Event is set, event_number: " << event_number << endl;
-								event.set_event(portion_to_process_index + 1, event_number, event_unix_time, nsec_time, vector_pixel);
-								// event.ccd_id(vector_ccd);
-
-								// yel lines:
-								/*if (!(y_set_times.find(very_first_event_in_file_unix_time) != y_set_times.end()))
-								{
-									y_set_times.insert(very_first_event_in_file_unix_time);
-									y_vector_times.push_back(very_first_event_in_file_unix_time);
-								}
-								cout << "\n\n\n";
-								cout << setprecision(10) << "lets look at very_first_event_in_file_unix_time   : " << very_first_event_in_file_unix_time << endl;
-								cout << setprecision(10) << "and event.unix_time   : " << event.unix_time << endl;
-								cout << setprecision(10) << "very_first_event_in_file_unix_time + 12.          : " << very_first_event_in_file_unix_time + 12 << endl;
-								cout << setprecision(10) << "event.unix_time-very_first_event_in_file_unix_time: " << event.unix_time-very_first_event_in_file_unix_time << endl;
-								cout << "\n\n\n";*/
-
-								//cout << setprecision(10) << "Event number: " << event.number << "\tevent.unix_time: " << event.unix_time << "\t very_first_event_time: " << very_first_event_in_file_unix_time << "\tevent.number_of_pixels: " << event.number_of_pixels << endl;
-								//cout << "this should be less/equal zero, first_event + 12 - event.unix_time:" << (very_first_event_in_file_unix_time + 12. - event.unix_time) << endl;
-								if (very_first_event_in_file_unix_time + 12. <= event.unix_time && event.number_of_pixels > 3)
-								{     // NEEDSCLARIFICATION!!! WHY SKIP EVENTS IN FIRST 12 SECONDS???
-									//cout << "Event is accepted\n";
-									// cout << very_first_event_in_file_unix_time << "\t" << event_unix_time << endl;
-									if (event.number_of_pixels > 0)
-									{
-										// cout << ccd_id << endl;
-										ccd_id = event.get_ccd_parameters(ccd_id, vector_ccd);
-										event.star_correction(amps_mtrx_s_ev, mtrx_neigh_cls_n, mtrx_neigh_chnl_n);
-										event.get_hillas();
-										event.to_deg();
-										event.get_edge(matrix_neighbors_n);
-										// cout << event.portion << "\t" << event.number << "\t" << event.number_of_pixels << "\t" << dates_to_process[date_run_index].c_str() << "." << runs_to_process[date_run_index].c_str() << " " << event_time << "\t"  << event.size  << "\t" << event.star << " " << event.edge << endl;
-										if (save_background == 1)
-										{
-											fout << event.number << "\t" << event.number_of_pixels << "\t" << event_time << "\t" << event.size << endl;
-										}
-										vector_events.push_back(event);
-									}
+									// cout << ccd_id << endl;
+									ccd_id = event.set_ccd_parameters(ccd_id, vector_ccd);  // sets ccd parameters with closest in time pointing_data row
+									event.star_correction(amps_mtrx_s_ev, mtrx_neigh_cls_n, mtrx_neigh_chnl_n);  // makes closest to star_x and star_y zero
+																												 // or divides to number of neighbors ???
+									
+									event.get_hillas();
+									event.to_deg();
+									event.get_edge(matrix_neighbors_n);
+									// cout << event.portion << "\t" << event.number << "\t" << event.number_of_pixels << "\t" << dates_to_process[date_run_index].c_str() << "." << runs_to_process[date_run_index].c_str() << " " << event_time << "\t"  << event.size  << "\t" << event.star << " " << event.edge << endl;
 									if (save_background == 1)
 									{
-										for (int count = 0; count < vector_pixel[0].size(); count++)
+										fout << event.number << "\t" << event.number_of_pixels << "\t" << event_time << "\t" << event.size << endl;
+									}
+									vector_events.push_back(event);
+								}
+								if (save_background == 1)
+								{
+									for (int count = 0; count < vector_pixel[0].size(); count++)
+									{
+										for (int coun = 0; coun < 5; coun++)
 										{
-											for (int coun = 0; coun < 5; coun++)
-											{
-												fout << vector_pixel[coun][count] << "\t";
-											}
-											fout << endl;
+											fout << vector_pixel[coun][count] << "\t";
 										}
+										fout << endl;
 									}
 								}
-								//else
-								//{
-								//	cout << "Event was not accepted\n";
-								//}
-								//cout << "pause, when done enter int number: ";
-								//if(event.number % 500 == 0)
-								//{
-									//cin >> my_for_pause_variable;
-								//}
-						
-								//cout << "\n\n\n\n\n";
+							}
+							// else
+							//{
+							//	cout << "Event was not accepted\n";
+							// }
+							// cout << "pause, when done enter int number: ";
+							// if(event.number % 500 == 0)
+							//{
+							// cin >> my_for_pause_variable;
+							//}
 
+							// cout << "\n\n\n\n\n";
 
-								very_first_event_in_file_marker++;
-						}  // loop through events in amp file ended
+							very_first_event_in_file_marker++;
+						} // loop through events in amp file ended
 					}
 				}
 				fout.close();
@@ -489,6 +394,13 @@ int main(int argc, char **argv)
 		cout << ' ' << *it << endl;*/
 	return 0;
 }
+
+
+
+
+
+
+
 
 double time_start_end(string run_date, string path)
 {
@@ -841,7 +753,7 @@ void make_out_dir(char **config_file_name, int date_run_index)
 	dst << src.rdbuf(); // ???
 }
 
-void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index, vector<string> *amp_files_abs_paths,int number_of_portions_to_process)
+void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index, vector<string> *amp_files_abs_paths, int number_of_portions_to_process)
 {
 	// wobble start
 	first_file_first_event_unix_timestamp = time_start_end(dates_to_process[date_run_index], (*amp_files_abs_paths)[0]); // ,
@@ -859,13 +771,94 @@ void read_pointing_data(vector<vector<double>> *vector_ccd, int date_run_index, 
 	}
 	////////////////////////////////////////////////////////////////////////
 	*vector_ccd = read_ccd(vector_wobble,
-						  first_file_first_event_unix_timestamp, last_file_first_event_unix_timestamp_plus120,
-						  clean_only);
+						   first_file_first_event_unix_timestamp, last_file_first_event_unix_timestamp_plus120,
+						   clean_only);
 	// concatenates pointing_data files whose time is between
 	// first_file_first_event_unix_timestamp and last_file_first_event_unix_timestamp_plus120
 	// vector_ccd[column][row]
 
-	
 	cout << "\t\tnumber of written ccd rows: " << vector_ccd[0].size() << endl;
 	// wobble finish
+}
+
+void fill_amp_mtrx(ifstream *DataFileOuts, int portion_to_process_index, int date_run_index, int *very_first_event_in_file_marker)
+{
+	// here amp_mtrx filling starts
+	istringstream iss(str);
+	int clasters_in_event_n;
+	iss >> clasters_in_event_n;
+	// cout << clasters_in_event_n << endl;
+	for (int cltr_n = 0; cltr_n < 25; cltr_n++)
+	{
+		cluster[cltr_n] = 0; // needsclarification pre-initialization
+		for (int ch_n = 0; ch_n < 64; ch_n++)
+		{
+			amps_mtrx_s_ev[ch_n][cltr_n] = 0;	 // amps from out file, pre-initialization
+			background_marker[ch_n][cltr_n] = 0; // pre-initialization, background_marker[i][j] will be set to 1 for image and boundary pixels
+		}
+	}
+	for (int clstr_iter_in_event = 1; clstr_iter_in_event <= clasters_in_event_n; clstr_iter_in_event++)
+	{
+		getline(*DataFileOuts, srr[clstr_iter_in_event]);
+		istringstream ist(srr[clstr_iter_in_event]);
+		ist >> clstr_number >> event_number >> event_time;
+		if (clstr_iter_in_event == 1)
+		{
+			time_cam t;
+			t.set_time(dates_to_process[date_run_index], event_time);
+			// cout <<  date[0] << "\t" << date[1] << "\t" << date[2] << "\t" << date[3] << ":" <<  date[4] << ":" << date[5] << "," << date[6] << "." << date[7] << "."<< date[8] << endl;
+			event_unix_time = t.get_unix_time(); // unix_time in seconds,  needsclarification
+
+			// cout << setprecision(10) << "\n\n LOOK: " << event_unix_time << "\n\n";   // y
+			//  exit(1); // y
+
+			nsec_time = t.full_unix_nsec(); // unix_time in nanoseconds
+
+			// cout <<setprecision(6) << fixed << event_unix_time << "\t" << a->GetSec() << "." << a->GetNanoSec() << endl;
+			if ((*very_first_event_in_file_marker) == 0)
+			{ // only very first line in the file
+				// cout << "very_first_event_in_file_marker is assigned only one time and its equal: " << very_first_event_in_file_marker << "\t" << event_unix_time << endl;
+				very_first_event_in_file_unix_time = event_unix_time;
+			}
+		}
+		cluster[clstr_iter_in_event] = clstr_number;
+		for (int ch_n = 0; ch_n < 64; ch_n = ch_n + 8)
+		{
+			getline(*DataFileOuts, str);
+			istringstream ist(str);
+			ist >> amps_mtrx_s_ev[ch_n][clstr_number] >> x >> // every second input is trigger_status, not used
+				amps_mtrx_s_ev[ch_n + 1][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 2][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 3][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 4][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 5][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 6][clstr_number] >> x >>
+				amps_mtrx_s_ev[ch_n + 7][clstr_number] >> x;
+		}
+		for (int ch_n = 0; ch_n < 64; ch_n = ch_n + 2)
+		{
+			if (e[clstr_number][ch_n] > 0 || sens[clstr_number][ch_n] > 0)
+			{
+				if ((amps_mtrx_s_ev[ch_n][clstr_number]) >= 3000)
+				{
+					amps_mtrx_s_ev[ch_n][clstr_number] = (amps_mtrx_s_ev[ch_n + 1][clstr_number] - ped[ch_n + 1][clstr_number]) / (e[clstr_number][ch_n + 1] * sens[clstr_number][ch_n + 1]); // every second is anode channel
+					// amps_mtrx_s_ev[ch_n+1][clstr_number] = (amps_mtrx_s_ev[ch_n+1][clstr_number] - ped[ch_n+1][clstr_number])/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
+					sig[ch_n][clstr_number] = sig[ch_n + 1][clstr_number];
+				}
+				else
+				{
+					amps_mtrx_s_ev[ch_n][clstr_number] = (amps_mtrx_s_ev[ch_n][clstr_number] - ped[ch_n][clstr_number]) / (e[clstr_number][ch_n] * sens[clstr_number][ch_n]);
+					// amps_mtrx_s_ev[ch_n+1][clstr_number] = (amps_mtrx_s_ev[ch_n+1][clstr_number] - ped[ch_n+1][clstr_number])/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
+				}
+			}
+			else
+			{
+				amps_mtrx_s_ev[ch_n][clstr_number] = 0; // if ((e[clstr_number][ch_n] > 0 || sens[clstr_number][ch_n] > 0) == false), channel is set to zero
+				amps_mtrx_s_ev[ch_n + 1][clstr_number] = 0;
+			}
+			// sig[ch_n][clstr_number] = sig[ch_n][clstr_number]/(e[clstr_number][ch_n]*sens[clstr_number][ch_n]);
+			// sig[ch_n+1][clstr_number] = sig[ch_n+1][clstr_number]/(e[clstr_number][ch_n+1]*sens[clstr_number][ch_n+1]);
+		}
+	}
+	// here amp_mtrx filling ends
 }
